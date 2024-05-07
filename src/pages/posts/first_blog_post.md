@@ -1,103 +1,162 @@
 ---
 layout: ../../layouts/post.astro
-title: "This is the first post of my new Astro blog."
-pubDate: 2023-12-23
-description: "This is the first post of my new Astro blog."
-author: "nicdun"
-excerpt: Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et
+title: "Terraform Basics"
+pubDate: 2024-05-06
+description: "Purpose and basic commands of Terraform."
+author: "eiki"
+excerpt: Infrastructure as code. Like a summary of all the features your infrastructure have (storage type and size, ports, cloud), which can be easily read and removed. 
 image:
-  src:
+  src: /src/images/terraform_showcase.png
   alt:
-tags: ["tag1", "tag2", "tag3"]
+tags: ["terraform", "iac", "data engineering"]
 ---
 
-This is a paragraph. Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+> [!tldr]
+> Infrastructure as code. Like a summary of all the features your infrastructure have (storage type and size, ports, cloud), which can be easily read and removed. 
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+- não pode mudar recursos imutáveis, como o tipo da [[Máquina Virtual]].
+- não gerencia ou atualiza código da infraestrutura (deploy)
+- não gerencia recursos que não foram definidos no arquivo Terraform, como cluster da aws.
+Providers: código que permite ao Terraform se comunicar com as plataformas de nuvem (Cloud, AWS, GCP, Azure).
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+### Versionamento
+https://spacelift.io/blog/tfenv
 
-## Headings
+Basicamente usar WSL para instalar o versionador do terraform no Windows. Tentar instalar direto pelo power shell ou Prompt de Comando não funciona.
 
-# H1 For example
+Isso é útil porque, aparentemente, o Terraform tem várias versões e muda bem rápido.
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+```terraform
+> tfenv install
+instala alguma versão
 
-## H2 For example
+> tfenv use
+usa alguma versão instalada
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+> tfenv list
+```
 
-### H3 For example
+### Comandos
+- `fmt`: formata os arquivos
+- init: get the providers
+- plan: what to do
+- apply: do what the tf file say
+- remove: remove all the resources
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+```cmd
+> terraform fmt // format the mistakes on terraform files
+> terraform init // prepare current directory to work with terraform
+> terraform plan // creates an execution plan
+> terraform apply -auto-approve // create in aws
+> terraform apply -destroy -auto-approve // destroy in aws
+> terraform destroy // destroi apenas recursos que vc criou
+```
 
-#### H4 For example
+#### Dangers of cloud credential exposure
+Com grandes permissões, há grandes responsabilidades. Se não limitar o uso do seu serviço, uma conta vazada pode ser utilizada para várias práticas custosas:
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+- criar uma [[Máquina Virtual]] e minerar bitcoin
+- armazenar arquivos gigantes
+- command and control servers para botnets
 
-##### H5 For example
+#### Variables
+Repare que variáveis não podem ser usadas em conjunto com planos, apenas no modo especulativo.
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+1. Crie `variables.tf` (pode ser outro nome, mas assim fica intuitivo)
+2. Escreva um bloco do tipo `variable`
 
-###### H6 For example
+```terraform
+variable "instance_name" {
+	description = "Valor para a tag da instância" 
+	type = string
+	default = "ExampleAppName"
+}
+```
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+3. Para chamar, basta fazer `var.instance_name` em qualquer lugar no arquivo. Nesse caso, iremos colocar na tag da instância.
 
-## Emphasis
+```terraform
+ resource "aws_instance" "app_server" {
+   ami           = "ami-08d70e59c07c61a3a"
+   instance_type = "t2.micro"
 
-Emphasis, aka italics, with _asterisks_ or _underscores_.
+   tags = {
++    Name = var.instance_name
+   }
+ }
+```
 
-Strong emphasis, aka bold, with **asterisks** or **underscores**.
+E mais interessante, pode substituir o valor default durante o `apply`
 
-Strikethrough uses two tildes. ~~Scratch this.~~
+```terraform
+terraform apply -var "OutroNomeQualquer"
+```
 
-## Blockquotes
+#### Output
 
-> Blockquotes are very handy in email to emulate reply text.
-> This line is part of the same quote.
+```
+> terraform output
+```
 
-Quote break.
+Basicamente, se você quiser mostrar alguma informação ao executar esse comando, basta criar o bloco `output` com `description` e `value`. Por exemplo: `aws_instance.app_server.public_ip
 
-> This is a very long line that will still be quoted properly when it wraps. Oh boy let's keep writing to make sure this is long enough to actually wrap for everyone. Oh, you can _put_ **Markdown** into a blockquote.
+aws_instance é o tipo do recurso e app_server é o nome que você deu a ele. 
 
-## Horizontal separator
+### Locals
+Locals você pode usar para guardar ou computar valores complexos dentro do escopo da sua infra. Uma vez que definiu eles, você não consegue alterar de fora, por exemplo, rodando um plan ou apply. 
 
-This is a horizontal separator:
+Variáveis você pode ter diferente valores dependendo do ambiente que você está deployando, por exemplo: em dev se tem uma infra mais enxuta que em prod. Isso só controla usando variáveis.
 
+```locals.tf
+locals {
+	ip_filepath = "resources/ip.json"
+	commom_tags = {
+		Environment = var.environment
+		OWner = "Bruno"
+	}
+}
+```
+
+```s3.tf
+resource "aws_s3_object" "name" {
+	bucket = aws_s3_bucket.this.bucket
+	key = "${local.ip_filepath}"
+	source = ip_filepath
+	etag = filemds5(ip_filepath)
+}
+```
+
+### First Steps 
 ---
+Para começar, é preciso criar um usuário no seu provedor escolhido. Definir quais permissões ele terá, definir as chaves (Access Key e Secret Access Key).
 
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
+Depois, basta copiar e colar essas chaves em `~/.aws/credentials`
 
----
+```
+[default] // aqui vai ser o nome do usuário
+aws_access_key_id = 20character
+aws_secret_access_key = 40character
+```
 
-## List types
+Em seguida, crie o seu arquivo ``providers.tf``
 
-### Ordered list
-
-1. List item 1
-2. List item 2
-   1. Nested list item A
-   2. Nested list item B
-3. List item 3
-
-### Unordered list
-
-- List item
-- List item
-  - Nested list item
-  - Nested list item
-    - Double nested list item
-    - Double nested list item
-- List item
-
-### Mixed list
-
-1. First ordered list item
-2. Another item
-   - Unordered sub-list.
-3. Actual numbers don't matter, just that it's a number
-   1. Ordered sub-list
-4. And another item.
+```terraform
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+ 
+# Configure the AWS Provider
+provider "aws" {
+  region = "sa-east-1"
+  shared_credentials_files = "~/.aws/credentials" # acess key e shared acess key
+  profile = "eiki"
+}
+```
 
 ## Links
 
@@ -122,7 +181,7 @@ Some text to show that the reference links can follow later.
 Images included in _\_posts_ folder are lazy loaded.
 
 Inline-style:
-![alt text](/src/images/random.jpeg "Logo Title Text 1")
+![Figure 1: Terraform diagram](/src/images/terraform_showcase.png "Terraform Diagram")
 
 ## Table
 
@@ -151,13 +210,4 @@ export default defineConfig({
     },
   }),
 });
-```
-
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
-Lorem ipsum dolor sit amet consectetur adipisicing elit. Tenetur vero esse non molestias eos excepturi, inventore atque cupiditate. Sed voluptatem quas omnis culpa, et odit.
-
-```python showLineNumbers
-s = "Python syntax highlighting"
-print s
 ```

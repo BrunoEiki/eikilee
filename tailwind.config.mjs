@@ -1,3 +1,4 @@
+import '@fontsource-variable/source-serif-4';
 
 const disabledCss = {
 	'code::before': false,
@@ -15,6 +16,9 @@ export default {
 	content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
 	theme: {
 		extend: {
+			fontFamily: {
+				serif: ['Source Serif 4 Variable']
+			},
 			typography: {
 				DEFAULT: { css: disabledCss },
 				sm: { css: disabledCss },
